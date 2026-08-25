@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boss Tài Xỉu — Phân tích lịch sử</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1020;color:#fff}
+.wrap{max-width:720px;margin:auto;padding:18px}.card{background:#151c32;border:1px solid #293453;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 8px 30px #0004}
+h1{font-size:25px;margin:5px 0 4px}.sub{color:#aeb8d3;font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:13px;padding:13px 17px;font-weight:700;font-size:16px;cursor:pointer}
+.tai{background:#ffb020;color:#241500}.xiu{background:#55a8ff;color:#041526}.danger{background:#ef5260;color:white}.dark{background:#2a3450;color:#fff}
+input,textarea{width:100%;background:#0d1427;color:#fff;border:1px solid #35405f;border-radius:12px;padding:12px;font-size:16px}
+textarea{min-height:100px;resize:vertical}.result{text-align:center;padding:22px;border-radius:18px;background:#0d1427;border:2px solid #35405f}
+.result .label{font-size:14px;color:#aeb8d3}.result .pick{font-size:42px;font-weight:900;margin:5px}.confidence{font-size:15px;color:#b9c4df}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#0d1427;border-radius:12px;padding:12px;text-align:center}.num{font-size:22px;font-weight:800}.small{font-size:12px;color:#aeb8d3}
+.history{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto}.chip{padding:7px 10px;border-radius:9px;font-weight:800;font-size:13px}.chip.t{background:#6d4c12}.chip.x{background:#194a76}
+.note{font-size:12px;line-height:1.5;color:#9eabc9}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<h1>🎯 Boss Tài Xỉu</h1>
+<div class="sub">Phân tích lịch sử Tài/Xỉu — không đảm bảo kết quả ván kế tiếp.</div>
+</div>
+
+<div class="card">
+<h3>1. Nhập lịch sử</h3>
+<p class="note">Nhập chuỗi như: T X T T X X T hoặc dán nhiều kết quả cách nhau bằng dấu cách, dấu phẩy hoặc xuống dòng.</p>
+<textarea id="history" placeholder="Ví dụ: T X T T X X T X T"></textarea>
+<div class="row" style="margin-top:10px">
+<button class="btn tai" onclick="add('T')">+ TÀI</button>
+<button class="btn xiu" onclick="add('X')">+ XỈU</button>
+<button class="btn dark" onclick="analyze()">PHÂN TÍCH</button>
+<button class="btn danger" onclick="clearAll()">XÓA</button>
+</div>
+</div>
+
+<div class="card">
+<div class="result">
+<div class="label">KẾT QUẢ PHÂN TÍCH</div>
+<div id="pick" class="pick">—</div>
+<div id="confidence" class="confidence">Chưa đủ dữ liệu</div>
+</div>
+</div>
+
+<div class="card">
+<h3>📊 Thống kê</h3>
+<div class="stats">
+<div class="stat"><div id="total" class="num">0</div><div class="small">Tổng ván</div></div>
+<div class="stat"><div id="tc" class="num">0</div><div class="small">Tài</div></div>
+<div class="stat"><div id="xc" class="num">0</div><div class="small">Xỉu</div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>🔎 Các mẫu lịch sử</h3>
+<div id="details" class="note">Nhập ít nhất 5 kết quả để phân tích.</div>
+</div>
+
+<div class="card">
+<h3>📜 Lịch sử hiện tại</h3>
+<div id="chips" class="history"></div>
+</div>
+
+<div class="card">
+<div class="note">
+<b>Lưu ý:</b> Công cụ này chỉ phân tích dữ liệu lịch sử và nhận diện mẫu thống kê. Nếu các ván được tạo ngẫu nhiên/công bằng, lịch sử không thể bảo đảm dự đoán chính xác ván tiếp theo. Không nên xem % hiển thị như xác suất thắng thực tế.
+</div>
+</div>
+</div>
+
+<script>
+const KEY="boss_taixiu_history_v1";
+let data=JSON.parse(localStorage.getItem(KEY)||"[]");
+
+function save(){localStorage.setItem(KEY,JSON.stringify(data));}
+function add(v){data.push(v);save();render();analyze();}
+function clearAll(){if(confirm("Xóa toàn bộ lịch sử?")){data=[];save();render();document.getElementById("pick").textContent="—";document.getElementById("confidence").textContent="Chưa đủ dữ liệu";}}
+function parseText(s){return s.toUpperCase().split(/[^TX]+/).filter(Boolean).filter(x=>x==="T"||x==="X");}
+function render(){
+ document.getElementById("history").value=data.join(" ");
+ document.getElementById("total").textContent=data.length;
+ document.getElementById("tc").textContent=data.filter(x=>x==="T").length;
+ document.getElementById("xc").textContent=data.filter(x=>x==="X").length;
+ document.getElementById("chips").innerHTML=data.map((v,i)=>`<span class="chip ${v==="T"?"t":"x"}">${i+1}.${v==="T"?"TÀI":"XỈU"}</span>`).join("");
+}
+function analyze(){
+ const typed=parseText(document.getElementById("history").value);
+ if(typed.length && typed.join("")!==data.join("")){data=typed;save();}
+ const n=data.length;
+ if(n<5){document.getElementById("details").textContent="Cần ít nhất 5 kết quả. Nên có nhiều dữ liệu hơn để thống kê ổn định.";return;}
+ const recent=data.slice(-12);
+ const t=data.filter(x=>x==="T").length, x=n-t;
+ const last=data[n-1];
+ let scores={T:0,X:0}, reasons=[];
+ scores.T += (t/n)*20; scores.X += (x/n)*20;
+ const r8=data.slice(-8), rt=r8.filter(v=>v==="T").length;
+ scores.T += (rt/r8.length)*30; scores.X += ((r8.length-rt)/r8.length)*30;
+ if(n>=2){
+   const a=data[n-2]+data[n-1], next={T:0,X:0}, count={T:0,X:0};
+   for(let i=0;i<n-1;i++) if(data[i]+data[i+1]===a && i+2<n){next[data[i+2]]++;count[data[i+2]]++;}
+   if(next.T+next.X){scores.T += 30*next.T/(next.T+next.X); scores.X += 30*next.X/(next.T+next.X);}
+ }
+ let run=1; for(let i=n-2;i>=0&&data[i]===last;i--)run++;
+ if(run>=3){reasons.push(`Đang có cầu bệt ${last==="T"?"Tài":"Xỉu"} ${run} ván liên tiếp.`);}
+ else reasons.push(`Chuỗi cuối hiện tại: ${last==="T"?"Tài":"Xỉu"} ${run} ván.`);
+ const best=scores.T>=scores.X?"T":"X";
+ const diff=Math.abs(scores.T-scores.X);
+ const conf=Math.min(75,50+diff*0.6);
+ document.getElementById("pick").textContent=best==="T"?"TÀI":"XỈU";
+ document.getElementById("pick").style.color=best==="T"?"#ffb020":"#55a8ff";
+ document.getElementById("confidence").textContent=`Mức nghiêng theo mô hình lịch sử: ${conf.toFixed(0)}% (không phải xác suất thắng)`;
+ const alt=best==="T"?"XỈU":"TÀI";
+ const r8t=rt, r8x=8-rt;
+ document.getElementById("details").innerHTML=
+ `<b>Toàn bộ:</b> Tài ${t}/${n} (${(t/n*100).toFixed(1)}%), Xỉu ${x}/${n} (${(x/n*100).toFixed(1)}%).<br>`+
+ `<b>8 ván gần nhất:</b> Tài ${r8t}, Xỉu ${r8x}.<br>`+
+ `<b>12 ván gần nhất:</b> ${recent.join(" → ")}.<br>`+
+ `<b>Phân tích:</b> ${reasons.join(" ")}<br>`+
+ `<b>Kết quả mô hình:</b> nghiêng về <b>${best==="T"?"TÀI":"XỈU"}</b>; phương án còn lại: ${alt}.`;
+}
+document.getElementById("history").addEventListener("input",()=>{});
+render(); if(data.length>=5) analyze();
+</script>
+</body>
+</html>
